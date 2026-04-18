@@ -480,7 +480,7 @@ pem_to_bin() {
     local pycmd="import sys; \
                  sys.path.append(\"${TOOL_PATH}\"); \
                  import pem_extract_pubkey; \
-                 sys.stdout.write(pem_extract_pubkey.extract_pubkey( \
+                 sys.stdout.buffer.write(pem_extract_pubkey.extract_pubkey( \
                     \"$input\", headerMode=False));"
     /usr/bin/env python -c "$pycmd" > $output
 }

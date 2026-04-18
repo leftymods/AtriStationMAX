@@ -1,0 +1,61 @@
+/dts-v1/;
+
+/ {
+	compatible = "leftymods,atristation-atr-01", "amlogic,sm1";
+	#address-cells = <2>;
+	#size-cells = <2>;
+	model = "AtriStation ATR-01";
+	vendor = "leftymods";
+	product-name = "AtriStation";
+	product-model = "ATR";
+	product-version = "01";
+	amlogic-dt-id = "sm1_s905x3_atristation_atr_01_uboot";
+
+	aliases {
+		led-ring-left = &led_ring_left;
+		led-ring-right = &led_ring_right;
+		led-ring-eeprom = &led_ring;
+	};
+
+	soc {
+		compatible = "simple-bus";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		cbus@ffd00000 {
+			compatible = "simple-bus";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0x0 0x0 0xffd00000 0x26000>;
+
+			i2c0: i2c@1f000 {
+				compatible = "amlogic,meson-sm1-i2c";
+				reg = <0x1f000 0x20>;
+				status = "okay";
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				led_ring_left: is31f3236a@3c {
+					compatible = "issi,is31fl3236,gva";
+					reg = <0x3c>;
+					status = "okay";
+					max-brightness-scale = <200>;
+				};
+
+				led_ring_right: is31f3236a@3f {
+					compatible = "issi,is31fl3236,gva";
+					reg = <0x3f>;
+					status = "okay";
+					max-brightness-scale = <200>;
+				};
+
+				led_ring: eeprom@52 {
+					compatible = "24c01";
+					reg = <0x52>;
+					status = "okay";
+				};
+			};
+		};
+	};
+};

@@ -861,7 +861,7 @@ u-boot-comp.bin:u-boot.bin
 ifeq ($(CONFIG_NEED_BL301), y)
 .PHONY : bl301.bin
 bl301.bin: tools prepare acs.bin bl21.bin
-	$(Q)$(MAKE) -C $(srctree)/$(CPUDIR)/${SOC}/firmware/scp_task
+	$(Q)$(MAKE) -C $(srctree)/$(CPUDIR)/${SOC}/firmware/scp_task CROSS_COMPILE=$(CROSS_COMPILE_T32)
 endif
 
 .PHONY : acs.bin

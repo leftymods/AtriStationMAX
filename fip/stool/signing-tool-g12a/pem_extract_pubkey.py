@@ -91,7 +91,9 @@ class DER:
     self._idx = 0
 
   def get_byte(self):
-    octet = ord(self._data[self._idx])
+    octet = self._data[self._idx]
+    if not isinstance(octet, int):
+      octet = ord(octet)
     self._idx += 1
     return octet
 
@@ -127,7 +129,7 @@ def pem_get_mod(filename):
     PEMError: If unable to parse .pem file or invalid file format.
   """
   # Read all the content of the .pem file
-  content = file(filename).readlines()
+  content = open(filename).readlines()
   # Check the PEM RSA Private/Public key tags
   pubkey = False
   if (content[0].strip() != PEM_HEADER) and (content[0].strip() != PEM_HEADER_GENPKEY) and \
@@ -166,7 +168,7 @@ def pem_get_mod(filename):
     raise PEMError('modulus field should be an integer')
   # 2048 bits + mandatory ASN.1 sign (0) => 257 Bytes
   modSize = (mod["length"] - 1) * 8
-  if modSize not in RSA_KEY_SIZES or mod["data"][0] != '\x00':
+  if modSize not in RSA_KEY_SIZES or mod["data"][0] != 0:
     raise PEMError('Invalid key length : %d bits' % (modSize))
 
   # 3rd field is Public Exponent
@@ -198,7 +200,7 @@ def modinv(a, m):
 
 def to_words(n, count):
   h = '%x' % n
-  s = ('0'*(len(h) % 2) + h).zfill(count*8).decode('hex')
+  s = bytes.fromhex(('0'*(len(h) % 2) + h).zfill(count*8))
   return array.array("I", s[::-1])
 
 def compute_mod_parameters(modulus, exp):
@@ -207,16 +209,19 @@ def compute_mod_parameters(modulus, exp):
   '''
   # create an array of uint32_t to store the modulus but skip the sign byte
   w = array.array("I",modulus[1:])
-  wordCount = (len(modulus) - 1) / 4
+  wordCount = (len(modulus) - 1) // 4
   # all integers in DER encoded .pem file are big endian.
   w.reverse()
   w.byteswap()
   # convert the big-endian modulus to a big integer for the computations
   N = 0
   for i in range(len(modulus)):
-    N = (N << 8) | ord(modulus[i])
+    octet = modulus[i]
+    if not isinstance(octet, int):
+      octet = ord(octet)
+    N = (N << 8) | octet
   # -1 / N[0] mod 2^32
-  B = 0x100000000L
+  B = 0x100000000
   n0inv = B - modinv(w[0], B)
 
   # R = 2^(modulo size); RR = (R * R) % N
@@ -226,23 +231,23 @@ def compute_mod_parameters(modulus, exp):
   RR = pow(2, modSize*2, N)
   rr_words = to_words(RR, wordCount)
 
-  return {'exp':int(exp.encode('hex'), 16), 'len':wordCount, 'mod':w, 'rr':rr_words, 'n0inv':n0inv}
+  return {'exp':int(exp.hex(), 16), 'len':wordCount, 'mod':w, 'rr':rr_words, 'n0inv':n0inv}
 
 def print_header(params):
-  print "{\n\t.e = %s," % (params['exp'])
-  print "\t.len = %d," % (params['len'])
-  print "\t.n = {%s}," % (",".join(["0x%08x" % (i) for i in params['mod']]))
-  print "\t.rr = {%s}," % (",".join(["0x%08x" % (i) for i in params['rr']]))
-  print "\t.n0inv = 0x%08x\n};" % (params['n0inv'])
+  print("{\n\t.e = %s," % (params['exp']))
+  print("\t.len = %d," % (params['len']))
+  print("\t.n = {%s}," % (",".join(["0x%08x" % (i) for i in params['mod']])))
+  print("\t.rr = {%s}," % (",".join(["0x%08x" % (i) for i in params['rr']])))
+  print("\t.n0inv = 0x%08x\n};" % (params['n0inv']))
 
 def dump_blob(params):
   pad_words = 128 - params['len']
-  padding = '\x00\x00\x00\x00' * pad_words
+  padding = b'\x00\x00\x00\x00' * pad_words
 
-  mod_bin = params['mod'].tostring() + padding
+  mod_bin = params['mod'].tobytes() + padding
   e_bin = struct.pack('<I', params['exp'])
-  rr_bin = params['rr'].tostring() + padding
-  n0inv_bin = array.array("I",[params['n0inv']]).tostring()
+  rr_bin = params['rr'].tobytes() + padding
+  n0inv_bin = array.array("I",[params['n0inv']]).tobytes()
   len_bin = struct.pack('<I', params['len'])
   return mod_bin + e_bin + rr_bin + n0inv_bin + len_bin
 
@@ -267,5 +272,5 @@ if __name__ == '__main__':
   except KeyboardInterrupt:
     sys.exit(0)
   except PEMError as e:
-    sys.stderr.write("Error: %s\n" % (e.message))
+    sys.stderr.write("Error: %s\n" % (e))
     sys.exit(1)

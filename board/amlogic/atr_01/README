@@ -1,0 +1,20 @@
+AtriStation ATR-01
+==================
+
+Vendor: leftymods
+Product: AtriStation
+Model: ATR
+Version: 01
+SoC: Amlogic SM1 / S905X3
+
+This board port is based on the existing SM1 AC223 U-Boot support and keeps a
+minimal U-Boot bring-up surface: serial, storage, USB/update, Android boot flow,
+and the SM1 DDR/firmware support inherited from the source board.
+
+Device tree files:
+
+* atr_01_android_full.dts - full Android DTS text ported from the supplied
+  S905X2/G12A source to SM1/S905X3 metadata. The original LED ring nodes are
+  preserved.
+* atr_01_uboot_minimal.dts - minimal U-Boot-oriented DTS text with only board
+  identity and LED ring I2C devices.
