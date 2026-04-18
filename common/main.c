@@ -86,13 +86,6 @@ void main_loop(void)
 
 	cli_init();
 
-#ifdef CONFIG_ATR_01
-	setenv("preboot", "");
-	setenv("bootcmd", "");
-	setenv("altbootcmd", "");
-	setenv("failbootcmd", "");
-#endif
-
 	run_preboot_environment_command();
 
 #if defined(CONFIG_UPDATE_TFTP)

@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <environment.h>
 #include <fdt_support.h>
+#include <i2c.h>
 #include <libfdt.h>
 #include <asm/cpu_id.h>
 #include <asm/arch/secure_apb.h>
@@ -579,6 +580,228 @@ void set_i2c_ao_pinmux(void)
 	return;
 }
 #endif /*end CONFIG_SYS_I2C_MESON*/
+
+#ifdef CONFIG_CMD_I2C
+#define ATR_LED_I2C_BUS		0
+#define ATR_LED_LEFT_ADDR	0x3c
+#define ATR_LED_RIGHT_ADDR	0x3f
+#define ATR_LED_SHUTDOWN_REG	0x00
+#define ATR_LED_PWM_FIRST	0x01
+#define ATR_LED_PWM_LAST	0x24
+#define ATR_LED_UPDATE_REG	0x25
+#define ATR_LED_CTRL_FIRST	0x26
+#define ATR_LED_CTRL_LAST	0x49
+#define ATR_LED_MAX_BRIGHTNESS	200
+#define ATR_LED_RING_COUNT	24
+
+static int atr_led_i2c_write(uchar chip, uchar reg, uchar val)
+{
+	return i2c_write(chip, reg, 1, &val, 1);
+}
+
+static int atr_led_select_i2c_bus(unsigned int *old_bus)
+{
+	*old_bus = i2c_get_bus_num();
+
+	if (*old_bus == ATR_LED_I2C_BUS)
+		return 0;
+
+	return i2c_set_bus_num(ATR_LED_I2C_BUS);
+}
+
+static int atr_led_enable_chip(uchar chip)
+{
+	int ret;
+	uchar reg;
+
+	ret = atr_led_i2c_write(chip, ATR_LED_SHUTDOWN_REG, 0x01);
+	if (ret)
+		return ret;
+
+	for (reg = ATR_LED_CTRL_FIRST; reg <= ATR_LED_CTRL_LAST; reg++) {
+		ret = atr_led_i2c_write(chip, reg, 0xff);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+static int atr_led_update_chip(uchar chip)
+{
+	return atr_led_i2c_write(chip, ATR_LED_UPDATE_REG, 0x00);
+}
+
+static int atr_led_set_chip_rgb(uchar chip, uchar red, uchar green, uchar blue)
+{
+	int ret;
+	uchar reg;
+
+	ret = atr_led_enable_chip(chip);
+	if (ret)
+		return ret;
+
+	for (reg = ATR_LED_PWM_FIRST; reg <= ATR_LED_PWM_LAST; reg += 3) {
+		ret = atr_led_i2c_write(chip, reg, blue);
+		if (ret)
+			return ret;
+		ret = atr_led_i2c_write(chip, reg + 1, green);
+		if (ret)
+			return ret;
+		ret = atr_led_i2c_write(chip, reg + 2, red);
+		if (ret)
+			return ret;
+	}
+
+	return atr_led_update_chip(chip);
+}
+
+static int atr_led_set_ring_rgb(unsigned int ring, uchar red, uchar green,
+				uchar blue)
+{
+	uchar chip;
+	uchar reg;
+	int ret;
+
+	if (ring >= ATR_LED_RING_COUNT)
+		return -EINVAL;
+
+	chip = (ring < 12) ? ATR_LED_LEFT_ADDR : ATR_LED_RIGHT_ADDR;
+	reg = ATR_LED_PWM_FIRST + ((ring % 12) * 3);
+
+	ret = atr_led_enable_chip(chip);
+	if (ret)
+		return ret;
+	ret = atr_led_i2c_write(chip, reg, blue);
+	if (ret)
+		return ret;
+	ret = atr_led_i2c_write(chip, reg + 1, green);
+	if (ret)
+		return ret;
+	ret = atr_led_i2c_write(chip, reg + 2, red);
+	if (ret)
+		return ret;
+
+	return atr_led_update_chip(chip);
+}
+
+static int atr_led_set_all_rgb(uchar red, uchar green, uchar blue)
+{
+	int ret;
+
+	ret = atr_led_set_chip_rgb(ATR_LED_LEFT_ADDR, red, green, blue);
+	if (ret)
+		return ret;
+
+	return atr_led_set_chip_rgb(ATR_LED_RIGHT_ADDR, red, green, blue);
+}
+
+static int atr_led_probe(void)
+{
+	int ret;
+
+	ret = i2c_probe(ATR_LED_LEFT_ADDR);
+	printf("ledrings: left  addr 0x%02x %s\n", ATR_LED_LEFT_ADDR,
+	       ret ? "missing" : "ok");
+
+	ret = i2c_probe(ATR_LED_RIGHT_ADDR);
+	printf("ledrings: right addr 0x%02x %s\n", ATR_LED_RIGHT_ADDR,
+	       ret ? "missing" : "ok");
+
+	return 0;
+}
+
+static uchar atr_led_parse_brightness(char * const argv[], int argc)
+{
+	unsigned long brightness = ATR_LED_MAX_BRIGHTNESS;
+
+	if (argc > 2)
+		brightness = simple_strtoul(argv[2], NULL, 0);
+	if (brightness > ATR_LED_MAX_BRIGHTNESS)
+		brightness = ATR_LED_MAX_BRIGHTNESS;
+
+	return (uchar)brightness;
+}
+
+static int atr_led_chase(uchar brightness)
+{
+	unsigned int ring;
+	int ret;
+
+	for (ring = 0; ring < ATR_LED_RING_COUNT; ring++) {
+		ret = atr_led_set_all_rgb(0, 0, 0);
+		if (ret)
+			return ret;
+		ret = atr_led_set_ring_rgb(ring, brightness, brightness,
+					   brightness);
+		if (ret)
+			return ret;
+		mdelay(80);
+	}
+
+	return atr_led_set_all_rgb(0, 0, 0);
+}
+
+static int do_atr_ledrings(cmd_tbl_t *cmdtp, int flag, int argc,
+			   char * const argv[])
+{
+	unsigned int old_bus;
+	uchar brightness;
+	int ret;
+
+	if (argc < 2)
+		return CMD_RET_USAGE;
+
+	ret = atr_led_select_i2c_bus(&old_bus);
+	if (ret) {
+		printf("ledrings: cannot select i2c bus %u\n",
+		       ATR_LED_I2C_BUS);
+		return CMD_RET_FAILURE;
+	}
+
+	brightness = atr_led_parse_brightness(argv, argc);
+
+	if (!strcmp(argv[1], "probe")) {
+		ret = atr_led_probe();
+	} else if (!strcmp(argv[1], "off")) {
+		ret = atr_led_set_all_rgb(0, 0, 0);
+	} else if (!strcmp(argv[1], "red")) {
+		ret = atr_led_set_all_rgb(brightness, 0, 0);
+	} else if (!strcmp(argv[1], "green")) {
+		ret = atr_led_set_all_rgb(0, brightness, 0);
+	} else if (!strcmp(argv[1], "blue")) {
+		ret = atr_led_set_all_rgb(0, 0, brightness);
+	} else if (!strcmp(argv[1], "white")) {
+		ret = atr_led_set_all_rgb(brightness, brightness, brightness);
+	} else if (!strcmp(argv[1], "chase") || !strcmp(argv[1], "test")) {
+		ret = atr_led_chase(brightness);
+	} else {
+		ret = CMD_RET_USAGE;
+	}
+
+	if (old_bus != ATR_LED_I2C_BUS)
+		i2c_set_bus_num(old_bus);
+
+	if (ret == CMD_RET_USAGE)
+		return CMD_RET_USAGE;
+	if (ret) {
+		printf("ledrings: i2c write failed (%d)\n", ret);
+		return CMD_RET_FAILURE;
+	}
+
+	return CMD_RET_SUCCESS;
+}
+
+U_BOOT_CMD(
+	ledrings, 3, 1, do_atr_ledrings,
+	"test AtriStation ATR-01 LED rings",
+	"probe\n"
+	"ledrings off\n"
+	"ledrings red|green|blue|white [0..200]\n"
+	"ledrings chase|test [0..200]\n"
+	"    DTB mapping: i2c bus 0, chips 0x3c/0x3f, PWM B/G/R regs 0x01..0x24"
+);
+#endif /* CONFIG_CMD_I2C */
 
 #ifdef CONFIG_PWM_MESON
 static const struct meson_pwm_platdata pwm_data[] = {
