@@ -594,20 +594,41 @@ void set_i2c_ao_pinmux(void)
 #define ATR_LED_MAX_BRIGHTNESS	200
 #define ATR_LED_RING_COUNT	24
 
+#ifdef CONFIG_DM_I2C
+static int atr_led_get_dev(uchar chip, struct udevice **devp)
+{
+	return i2c_get_chip_for_busnum(ATR_LED_I2C_BUS, chip, devp);
+}
+
+static int atr_led_i2c_write(uchar chip, uchar reg, uchar val)
+{
+	struct udevice *dev;
+	int ret;
+
+	ret = atr_led_get_dev(chip, &dev);
+	if (ret)
+		return ret;
+
+	return i2c_write(dev, reg, &val, 1);
+}
+
+static int atr_led_probe_chip(uchar chip)
+{
+	struct udevice *dev;
+
+	return atr_led_get_dev(chip, &dev);
+}
+#else
 static int atr_led_i2c_write(uchar chip, uchar reg, uchar val)
 {
 	return i2c_write(chip, reg, 1, &val, 1);
 }
 
-static int atr_led_select_i2c_bus(unsigned int *old_bus)
+static int atr_led_probe_chip(uchar chip)
 {
-	*old_bus = i2c_get_bus_num();
-
-	if (*old_bus == ATR_LED_I2C_BUS)
-		return 0;
-
-	return i2c_set_bus_num(ATR_LED_I2C_BUS);
+	return i2c_probe(chip);
 }
+#endif
 
 static int atr_led_enable_chip(uchar chip)
 {
@@ -700,11 +721,11 @@ static int atr_led_probe(void)
 {
 	int ret;
 
-	ret = i2c_probe(ATR_LED_LEFT_ADDR);
+	ret = atr_led_probe_chip(ATR_LED_LEFT_ADDR);
 	printf("ledrings: left  addr 0x%02x %s\n", ATR_LED_LEFT_ADDR,
 	       ret ? "missing" : "ok");
 
-	ret = i2c_probe(ATR_LED_RIGHT_ADDR);
+	ret = atr_led_probe_chip(ATR_LED_RIGHT_ADDR);
 	printf("ledrings: right addr 0x%02x %s\n", ATR_LED_RIGHT_ADDR,
 	       ret ? "missing" : "ok");
 
@@ -745,19 +766,11 @@ static int atr_led_chase(uchar brightness)
 static int do_atr_ledrings(cmd_tbl_t *cmdtp, int flag, int argc,
 			   char * const argv[])
 {
-	unsigned int old_bus;
 	uchar brightness;
 	int ret;
 
 	if (argc < 2)
 		return CMD_RET_USAGE;
-
-	ret = atr_led_select_i2c_bus(&old_bus);
-	if (ret) {
-		printf("ledrings: cannot select i2c bus %u\n",
-		       ATR_LED_I2C_BUS);
-		return CMD_RET_FAILURE;
-	}
 
 	brightness = atr_led_parse_brightness(argv, argc);
 
@@ -778,9 +791,6 @@ static int do_atr_ledrings(cmd_tbl_t *cmdtp, int flag, int argc,
 	} else {
 		ret = CMD_RET_USAGE;
 	}
-
-	if (old_bus != ATR_LED_I2C_BUS)
-		i2c_set_bus_num(old_bus);
 
 	if (ret == CMD_RET_USAGE)
 		return CMD_RET_USAGE;
