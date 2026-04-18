@@ -604,11 +604,11 @@ int board_init(void)
 {
     //Please keep CONFIG_AML_V2_FACTORY_BURN at first place of board_init
     //As NOT NEED other board init If USB BOOT MODE
-#ifdef CONFIG_AML_V2_FACTORY_BURN
+#if 0
 	if ((0x1b8ec003 != readl(P_PREG_STICKY_REG2)) && (0x1b8ec004 != readl(P_PREG_STICKY_REG2))) {
 				aml_try_factory_usb_burning(0, gd->bd);
 	}
-#endif// #ifdef CONFIG_AML_V2_FACTORY_BURN
+#endif
 #ifdef CONFIG_USB_XHCI_AMLOGIC_V2
 	board_usb_pll_disable(&g_usb_config_GXL_skt);
 	board_usb_init(&g_usb_config_GXL_skt,BOARD_USB_MODE_HOST);
@@ -686,6 +686,7 @@ void aml_config_dtb(void)
 int board_late_init(void)
 {
 	TE(__func__);
+	return 0;
 		//update env before anyone using it
 		run_command("get_rebootmode; echo reboot_mode=${reboot_mode}; "\
 						"if test ${reboot_mode} = factory_reset; then "\
@@ -741,11 +742,11 @@ int board_late_init(void)
 	lcd_probe();
 #endif
 
-#ifdef CONFIG_AML_V2_FACTORY_BURN
+#if 0
 	if (0x1b8ec003 == readl(P_PREG_STICKY_REG2))
 		aml_try_factory_usb_burning(1, gd->bd);
 		aml_try_factory_sdcard_burning(0, gd->bd);
-#endif// #ifdef CONFIG_AML_V2_FACTORY_BURN
+#endif
 
 	/* close pcie phy */
 	pcie_phy_shutdown();

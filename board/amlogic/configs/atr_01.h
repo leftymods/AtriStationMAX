@@ -313,19 +313,11 @@
 		"fi;\0" \
 
 
-#define CONFIG_PREBOOT  \
-            "run bcb_cmd; "\
-            "run factory_reset_poweroff_protect;"\
-            "run upgrade_check;"\
-            "run init_display;"\
-            "run storeargs;"\
-            "run upgrade_key;" \
-            "bcb uboot-command;"\
-            "run switch_bootmode;"
+#define CONFIG_PREBOOT ""
 
-#define CONFIG_BOOTCOMMAND "run storeboot"
+#define CONFIG_BOOTCOMMAND ""
 
-//#define CONFIG_ENV_IS_NOWHERE  1
+#define CONFIG_ENV_IS_NOWHERE  1
 #define CONFIG_ENV_SIZE   (64*1024)
 #define CONFIG_FIT 1
 #define CONFIG_OF_LIBFDT 1
@@ -463,8 +455,6 @@
 	#define CONFIG_SPI_FRAM_RAMTRON
 	#define CONFIG_SPI_M95XXX
 	#define CONFIG_SPI_FLASH_ESMT
-	/* SPI nand flash support */
-	#define CONFIG_SPI_NAND
 	#define CONFIG_BL2_SIZE (64 * 1024)
 #endif
 
@@ -621,7 +611,7 @@
 #define CONFIG_NEED_BL32	1
 #define CONFIG_CMD_RSVMEM	1
 #define CONFIG_FIP_IMG_SUPPORT	1
-#define CONFIG_BOOTDELAY	1 //delay 1s
+#define CONFIG_BOOTDELAY	-1
 #define CONFIG_SYS_LONGHELP 1
 #define CONFIG_CMD_MISC     1
 #define CONFIG_CMD_ITEST    1
