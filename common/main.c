@@ -64,25 +64,14 @@ static void run_preboot_environment_command(void)
 }
 
 #ifdef CONFIG_ATR_01
-static void atr_01_wait_for_console_break(void)
+static void atr_01_disable_env_boot(void)
 {
-	int i;
-
-	puts("ATR-01: press any key within 3 seconds to skip env boot... ");
-	for (i = 0; i < 3000; i++) {
-		if (tstc()) {
-			(void)getc();
-			puts("skip\n");
-			setenv("preboot", "");
-			setenv("bootcmd", "");
-			setenv("altbootcmd", "");
-			setenv("failbootcmd", "");
-			setenv("bootdelay", "-1");
-			return;
-		}
-		udelay(1000);
-	}
-	puts("run env\n");
+	puts("ATR-01: env boot commands disabled for console test\n");
+	setenv("preboot", "");
+	setenv("bootcmd", "");
+	setenv("altbootcmd", "");
+	setenv("failbootcmd", "");
+	setenv("bootdelay", "-1");
 }
 #endif
 
@@ -110,7 +99,7 @@ void main_loop(void)
 	cli_init();
 
 #ifdef CONFIG_ATR_01
-	atr_01_wait_for_console_break();
+	atr_01_disable_env_boot();
 #endif
 
 	run_preboot_environment_command();
