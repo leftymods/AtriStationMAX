@@ -570,14 +570,13 @@ U_BOOT_DEVICES(meson_i2cs) = {
 };
 
 /*
- *GPIOAO_10//I2C_SDA_AO
- *GPIOAO_11//I2C_SCK_AO
- *pinmux configuration seperated with i2c controller configuration
- * config it when you use
+ * LED rings are on i2c0 using GPIOC_0/GPIOC_1 on ATR-01.
+ * Force the GPIOC mux here so the DM meson i2c driver talks to the
+ * same bus described by the Android DT.
  */
 void set_i2c_ao_pinmux(void)
 {
-	return;
+	clrsetbits_le32(P_PERIPHS_PIN_MUX_9, 0xff, 0x11);
 }
 #endif /*end CONFIG_SYS_I2C_MESON*/
 

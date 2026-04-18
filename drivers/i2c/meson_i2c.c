@@ -397,6 +397,7 @@ static const struct udevice_id meson_i2c_ids[] = {
 	{ .compatible = "amlogic,meson-gx-i2c" },
 	{ .compatible = "amlogic,meson-gxbb-i2c" },
 	{ .compatible = "amlogic,meson-txlx-i2c" },
+	{ .compatible = "amlogic,meson-sm1-i2c" },
 	{ }
 };
 #endif
