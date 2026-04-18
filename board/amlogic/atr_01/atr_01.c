@@ -581,7 +581,7 @@ void set_i2c_ao_pinmux(void)
 }
 #endif /*end CONFIG_SYS_I2C_MESON*/
 
-#ifdef CONFIG_CMD_I2C
+#if defined(CONFIG_CMD_I2C) && defined(CONFIG_ATR_01_LED_RING_TEST)
 #define ATR_LED_I2C_BUS		0
 #define ATR_LED_LEFT_ADDR	0x3c
 #define ATR_LED_RIGHT_ADDR	0x3f
