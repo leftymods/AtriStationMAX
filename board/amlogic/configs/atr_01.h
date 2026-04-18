@@ -317,7 +317,7 @@
 
 #define CONFIG_BOOTCOMMAND ""
 
-#define CONFIG_ENV_IS_NOWHERE  1
+/* Use Amlogic storage-compatible environment on eMMC. */
 #define CONFIG_ENV_SIZE   (64*1024)
 #define CONFIG_FIT 1
 #define CONFIG_OF_LIBFDT 1
@@ -365,7 +365,7 @@
 /* axg only support slc nand */
 /* swither for mtd nand which is for slc only. */
 /* support for mtd */
-#define CONFIG_AML_MTD 1
+//#define CONFIG_AML_MTD 1
 /* support for nftl */
 //#define CONFIG_AML_NAND	1
 
