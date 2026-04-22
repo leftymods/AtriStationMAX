@@ -260,6 +260,10 @@ config SM1_AC223_V1
 	bool "Support amlogic sm1 ac223 v1 board"
 	default n
 
+config SM1_ATR_01_V1
+	bool "Support amlogic sm1 atr_01 v1 board"
+	default n
+
 config TM2_T962E2_AB319_V1
 	bool "Support amlogic tm2 t962e2 ab319 v1 board"
 	default n
