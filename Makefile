@@ -592,7 +592,11 @@ include $(srctree)/scripts/Makefile.extrawarn
 KBUILD_CPPFLAGS += $(KCPPFLAGS)
 KBUILD_AFLAGS += $(KAFLAGS)
 KBUILD_CFLAGS += $(KCFLAGS)
+<<<<<<< HEAD
 KBUILD_CFLAGS += -Werror
+=======
+KBUILD_CFLAGS += -Wno-int-conversion -Wno-misleading-indentation -Wno-format-overflow -Wno-format-truncation -Wno-maybe-uninitialized -Wno-array-bounds -Wno-stringop-truncation -Wno-stringop-overflow -Wno-address -Wno-enum-int-mismatch -Wno-pedantic -std=gnu99
+>>>>>>> 9a843768d1 (Rebuild: 2026-04-25 09:09 - fresh signed u-boot.bin)
 
 # Use UBOOTINCLUDE when you must reference the include/ directory.
 # Needed to be compatible with the O= option

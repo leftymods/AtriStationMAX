@@ -29,7 +29,7 @@ declare DEFCFG_FOLDER="board/amlogic/defconfigs"
 declare BL33_PATH1=""
 declare BL33_PATH2="bl33/v2019"
 
-declare BL33_TOOLCHAIN1="/opt/toolchains/gcc-linaro-aarch64-none-elf-4.8-2013.11_linux/bin/aarch64-none-elf-"
+declare BL33_TOOLCHAIN1="/usr/bin/aarch64-linux-gnu-"
 declare BL33_TOOLCHAIN2="${BL33_TOOLCHAIN1}"
 
 declare BL33_DEFCFG1="board/khadas/defconfigs"
