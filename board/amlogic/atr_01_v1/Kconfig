@@ -1,4 +1,4 @@
-if TARGET_MESON_G12B
+if TARGET_MESON_G12A
 
 config SYS_CPU
 	string
@@ -6,17 +6,17 @@ config SYS_CPU
 
 config SYS_BOARD
 	string
-	default "g12b_skt_v1"
+	default "atr_01_v1"
 
 config SYS_VENDOR
 	string
-	default "amlogic"
+	default "leftymods"
 
 config SYS_SOC
 	string
-	default "g12b"
+	default "sm1"
 
 config SYS_CONFIG_NAME
-	default "g12b_skt_v1"
+	default "atr_01_v1"
 
 endif

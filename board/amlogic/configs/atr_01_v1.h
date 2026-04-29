@@ -250,7 +250,7 @@
         "if itest ${irkey_value} == 0xe31cfb04; then " \
         "run update;" \
         "else if itest ${irkey_value} == 0xb748fb04; then " \
-        "run update;\n" \
+        "run update;" \
         "fi;fi;" \
         "fi;\0"
 
@@ -314,12 +314,17 @@
 #undef CONFIG_SPI_NAND
 #undef CONFIG_CMD_NAND
 
+/* Storage: eMMC only, env in eMMC */
+#define CONFIG_ENV_IS_IN_MMC 1
+#define CONFIG_SYS_MMC_ENV_DEV 1
+#define CONFIG_ENV_OFFSET 0x700000  /* 7MB offset for env */
+#define CONFIG_ENV_SIZE 0x10000     /* 64KB env size */
+
 #define CONFIG_AML_SD_EMMC 1
 #ifdef CONFIG_AML_SD_EMMC
 #define CONFIG_GENERIC_MMC 1
 #define CONFIG_CMD_MMC 1
 #define CONFIG_CMD_GPT 1
-#define CONFIG_SYS_MMC_ENV_DEV 1
 #define CONFIG_EMMC_DDR52_CLK 35000000
 #endif
 #define CONFIG_PARTITIONS 1
@@ -484,7 +489,11 @@
 
 //unify build for generate encrypted bootloader "u-boot.bin.encrypt"
 #define CONFIG_AML_CRYPTO_UBOOT 1
-//#define CONFIG_AML_SIGNED_UBOOT 1
+#define CONFIG_AML_SIGNED_UBOOT 1
+
+// Secure key configuration
+#define CONFIG_AML_SECUROITY_KEY_SUPPORT 1
+#define CONFIG_AML_SECURITY_KEY_INIT_IN_UBOOT 1
 
 #endif //CONFIG_AML_SECURE_UBOOT
 

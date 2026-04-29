@@ -1,3 +1,6 @@
+obj-y += atr_01_v1.o
+obj-y += eth_setup.o
 
-obj-y += $(BOARD).o eth_setup.o
-obj-$(CONFIG_AML_LCD) += lcd.o
+ifdef CONFIG_AML_LCD
+obj-y += lcd.o
+endif

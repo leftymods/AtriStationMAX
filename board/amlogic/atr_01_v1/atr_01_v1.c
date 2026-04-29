@@ -1,12 +1,3 @@
-/*
- * board/amlogic/atr_01_v1/atr_01_v1.c
- *
- * Copyright (C) 2025 leftymods. All rights reserved.
- *
- * ATR-01 (AtriStation) board support for Amlogic SM1/S905X3
- * Features: eMMC only (no NAND), LED Ring (IS31FL3236), Smart Speaker
- */
-
 #include <common.h>
 #include <malloc.h>
 #include <errno.h>
@@ -39,7 +30,6 @@
 #include <phy.h>
 #include <linux/sizes.h>
 #include <asm-generic/gpio.h>
-#include <dm.h>
 #ifdef CONFIG_AML_SPIFC
 #include <amlogic/spifc.h>
 #endif
@@ -55,10 +45,16 @@ DECLARE_GLOBAL_DATA_PTR;
 #define LED_RING_I2C_BUS 0
 
 // LED Ring registers
-#define IS31FL3236_REG_SHUTDOWN 0x00
-#define IS31FL3236_REG_PWM1 0x01
-#define IS31FL3236_REG_UPDATE 0x25
-#define IS31FL3236_REG_GLOBAL_CTRL 0x4A
+#define IS31FL3236_REG_SHUTDOWN		0x00
+#define IS31FL3236_REG_PWM1		0x01
+#define IS31FL3236_REG_PWM36		0x24
+#define IS31FL3236_REG_UPDATE		0x25
+#define IS31FL3236_REG_LED_CTRL1	0x26
+#define IS31FL3236_REG_LED_CTRL2	0x27
+#define IS31FL3236_REG_LED_CTRL3	0x28
+#define IS31FL3236_REG_LED_CTRL4	0x29
+#define IS31FL3236_REG_LED_CTRL5	0x2A
+#define IS31FL3236_REG_GLOBAL_CTRL	0x4B
 
 int serial_set_pin_port(unsigned long port_base)
 {
@@ -75,133 +71,97 @@ void secondary_boot_func(void)
 {
 }
 
-#ifdef ETHERNET_INTERNAL_PHY
-void internalPhyConfig(struct phy_device *phydev)
+static int led_ring_write_reg(u8 addr, u8 reg, u8 val)
 {
+	int ret;
+	u8 buf[2];
+
+	buf[0] = reg;
+	buf[1] = val;
+	ret = i2c_write(addr, reg, 1, &val, 1);
+	if (ret != 0)
+		printf("LED Ring: FAIL write 0x%02X to reg 0x%02X @ 0x%02X (ret=%d)\n",
+		       val, reg, addr, ret);
+	else
+		printf("LED Ring: OK write 0x%02X to reg 0x%02X @ 0x%02X\n",
+		       val, reg, addr);
+	udelay(200);
+	return ret;
 }
-
-static int dwmac_meson_cfg_pll(void)
-{
-	writel(0x39C0040A, P_ETH_PLL_CTL0);
-	writel(0x927C0000, P_ETH_PLL_CTL1);
-	writel(0x827D0000, P_ETH_PLL_CTL2);
-	writel(0xD7930000, P_ETH_PLL_CTL3);
-	writel(0x02140000, P_ETH_PLL_CTL4);
-	writel(0x727D0000, P_ETH_PLL_CTL5);
-	writel(0x927C0000, P_ETH_PLL_CTL6);
-	writel(0x00140000, P_ETH_PLL_CTL7);
-	return 0;
-}
-
-static int dwmac_meson_cfg_io(void)
-{
-	setbits_le32(P_PAD_GPIO_BANK_0_REG5, 0xff);
-	setbits_le32(P_PAD_GPIO_BANK_0_REG4, 0xff);
-	setbits_le32(P_PAD_GPIO_BANK_0_REG3, 0xff);
-	return 0;
-}
-
-static int dwmac_meson_cfg_gpios(void)
-{
-	writel(readl(P_PERIPHS_PIN_MUX_2) | (1 << 0), P_PERIPHS_PIN_MUX_2);
-	writel(readl(P_PERIPHS_PIN_MUX_6) | (1 << 28), P_PERIPHS_PIN_MUX_6);
-	return 0;
-}
-
-static void setup_net_chip(void)
-{
-	eth_aml_reg0_t eth_cus_value;
-
-	eth_cus_value.d32 = 0;
-	eth_cus_value.b.phy_intf_sel = 0;
-	eth_cus_value.b.rx_delay = 0xf;
-	eth_cus_value.b.tx_delay = 0;
-	eth_cus_value.b.gmode = 1;
-	eth_cus_value.b.rgmii_mode = 0;
-	eth_cus_value.b.rgmii_mode_en = 1;
-	eth_cus_value.b.adj_enable = 1;
-	eth_cus_value.b.calib_enable = 1;
-	eth_cus_value.b.calib_start = 0;
-	eth_cus_value.b.adj_setup = 0;
-	eth_cus_value.b.adj_delay = 0xf;
-	eth_cus_value.b.adj_skew = 0;
-	eth_cus_value.b.cali_start = 0;
-	eth_cus_value.b.cali_rise = 0;
-	eth_cus_value.b.cali_sel = 0;
-	eth_cus_value.b.rgmii_clk_sel = 0;
-	eth_cus_value.b.phy_clk_sel = 0;
-	eth_cus_value.b.phy_clk_sel_en = 0;
-	eth_cus_value.b.phy_clk_27m = 1;
-	eth_cus_value.b.phy_clk_out = 0;
-	eth_cus_value.b.phy_clk_out_en = 0;
-	eth_cus_value.b.phy_rxclk_sel = 0;
-	eth_cus_value.b.phy_rxclk_sel_en = 0;
-	eth_cus_value.b.phy_rxclk_inv = 0;
-
-	writel(eth_cus_value.d32, P_ETH_CNTL0);
-}
-
-int board_eth_init(bd_t *bis)
-{
-	setup_net_chip();
-	dwmac_meson_cfg_io();
-	dwmac_meson_cfg_gpios();
-	dwmac_meson_cfg_pll();
-
-	u32 reg = readl(P_ETH_CNTL0);
-	reg |= (1 << 0);
-	writel(reg, P_ETH_CNTL0);
-	udelay(10);
-	writel(reg & ~(1 << 0), P_ETH_CNTL0);
-
-	extern int dwc_eth_init(int idx, void *base, int *flags);
-	dwc_eth_init(0, (void *)(ETH_BASE), NULL);
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_AML_I2C
-void board_i2c_init(void)
-{
-	// I2C_A initialization for LED Ring
-	// Configure I2C_A SDA/SCL pins
-	writel(readl(P_PAD_GPIO_BANK_0_REG4) | (0x3 << 2), P_PAD_GPIO_BANK_0_REG4);
-}
-#endif
 
 static void led_ring_init(void)
 {
-	#ifdef CONFIG_LED_RING_SUPPORT
-	// Initialize IS31FL3236 LED controllers
-	u8 data[2];
+#ifdef CONFIG_LED_RING_SUPPORT
+	int ret1, ret2, i;
+	int controllers_found = 0;
 
-	// Enable LED controller 1 @ 0x3C
-	data[0] = IS31FL3236_REG_SHUTDOWN;
-	data[1] = 0x01; // Normal operation
-	i2c_probe(IS31FL3236_ADDR1, LED_RING_I2C_BUS);
-	i2c_write(IS31FL3236_ADDR1, IS31FL3236_REG_SHUTDOWN, 1, &data[1], 1);
+	printf("LED Ring: IS31FL3236 initialization starting...\n");
 
-	// Enable LED controller 2 @ 0x3F
-	data[0] = IS31FL3236_REG_SHUTDOWN;
-	data[1] = 0x01; // Normal operation
-	i2c_probe(IS31FL3236_ADDR2, LED_RING_I2C_BUS);
-	i2c_write(IS31FL3236_ADDR2, IS31FL3236_REG_SHUTDOWN, 1, &data[1], 1);
+	// Probe I2C devices
+	ret1 = i2c_probe(IS31FL3236_ADDR1, LED_RING_I2C_BUS);
+	ret2 = i2c_probe(IS31FL3236_ADDR2, LED_RING_I2C_BUS);
+	printf("LED Ring: Probe addr 0x%02X=%d, addr 0x%02X=%d\n",
+	       IS31FL3236_ADDR1, ret1, IS31FL3236_ADDR2, ret2);
 
-	// Set global control (brightness)
-	data[0] = IS31FL3236_REG_GLOBAL_CTRL;
-	data[1] = 0xFF; // Max brightness
-	i2c_write(IS31FL3236_ADDR1, IS31FL3236_REG_GLOBAL_CTRL, 1, &data[1], 1);
+	if (ret1 == 0) controllers_found++;
+	if (ret2 == 0) controllers_found++;
 
-	// Initialize all PWM registers to 0 (LEDs off)
-	for (int i = 0; i < 36; i++) {
-		data[0] = IS31FL3236_REG_PWM1 + i;
-		data[1] = 0x00;
-		i2c_write(IS31FL3236_ADDR1, data[0], 1, &data[1], 1);
+	if (controllers_found == 0) {
+		printf("LED Ring: ERROR - No controllers found on I2C bus %d!\n", LED_RING_I2C_BUS);
+		return;
 	}
 
-	printf("LED Ring: Initialized IS31FL3236 controllers @ 0x%02X and 0x%02X\n",
-		IS31FL3236_ADDR1, IS31FL3236_ADDR2);
-	#endif
+	// Initialize each controller
+	for (int c = 0; c < 2; c++) {
+		u8 addr = (c == 0) ? IS31FL3236_ADDR1 : IS31FL3236_ADDR2;
+		int ret = (c == 0) ? ret1 : ret2;
+
+		if (ret != 0) {
+			printf("LED Ring: Skipping controller @ 0x%02X (not present)\n", addr);
+			continue;
+		}
+
+		printf("LED Ring: Initializing controller @ 0x%02X...\n", addr);
+
+		// Step 1: Software shutdown (0x00 = shutdown mode)
+		led_ring_write_reg(addr, IS31FL3236_REG_SHUTDOWN, 0x00);
+
+		// Step 2: Enable all LED outputs (registers 0x26-0x2A)
+		led_ring_write_reg(addr, IS31FL3236_REG_LED_CTRL1, 0xFF);
+		led_ring_write_reg(addr, IS31FL3236_REG_LED_CTRL2, 0xFF);
+		led_ring_write_reg(addr, IS31FL3236_REG_LED_CTRL3, 0xFF);
+		led_ring_write_reg(addr, IS31FL3236_REG_LED_CTRL4, 0xFF);
+		led_ring_write_reg(addr, IS31FL3236_REG_LED_CTRL5, 0x0F);
+
+		// Step 3: Set global current control (0x4B - 0xFF = max)
+		led_ring_write_reg(addr, IS31FL3236_REG_GLOBAL_CTRL, 0xFF);
+
+		// Step 4: Initialize all PWM registers to 0 (off)
+		for (i = 0; i < 36; i++) {
+			u8 pwm_reg = IS31FL3236_REG_PWM1 + i;
+			led_ring_write_reg(addr, pwm_reg, 0x00);
+		}
+
+		// Step 5: Update PWM registers
+		led_ring_write_reg(addr, IS31FL3236_REG_UPDATE, 0x00);
+
+		// Step 6: Exit shutdown mode (0x01 = normal mode)
+		led_ring_write_reg(addr, IS31FL3236_REG_SHUTDOWN, 0x01);
+
+		printf("LED Ring: Controller @ 0x%02X initialized successfully\n", addr);
+	}
+
+	// Turn on a test LED to indicate success
+	if (ret1 == 0) {
+		led_ring_write_reg(IS31FL3236_ADDR1, IS31FL3236_REG_PWM1, 0x80);
+		led_ring_write_reg(IS31FL3236_ADDR1, IS31FL3236_REG_UPDATE, 0x00);
+		printf("LED Ring: TEST - LED 0 on @ 0x%02X (PWM 0x80 = 50%%)\n", IS31FL3236_ADDR1);
+	}
+
+	printf("LED Ring: Init done. Found %d/2 controllers (0x%02X=%s, 0x%02X=%s)\n",
+	       controllers_found, IS31FL3236_ADDR1, ret1 == 0 ? "OK" : "FAIL",
+	       IS31FL3236_ADDR2, ret2 == 0 ? "OK" : "FAIL");
+#endif
 }
 
 static void board_led_ring_enable(void)
